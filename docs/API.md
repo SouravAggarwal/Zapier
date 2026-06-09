@@ -38,7 +38,9 @@ List deployments with optional filtering and pagination.
       "status": "success",
       "duration": 180,
       "timestamp": "2025-04-01T08:00:00Z",
-      "commit_sha": "a1b2c3d"
+      "commit_sha": "a1b2c3d",
+      "created_at": "2025-04-01T08:00:00Z",
+      "updated_at": "2025-04-01T08:00:00Z"
     }
   ]
 }
@@ -47,9 +49,9 @@ List deployments with optional filtering and pagination.
 ### Response — 400
 
 ```json
-{ "error": "Invalid service 'x'. Valid options: billing-api, auth-service, payment-processor, notification-service." }
-{ "error": "Invalid 'timestamp_after'. Use ISO 8601 format (e.g. 2025-04-01T00:00:00Z)." }
-{ "error": "'limit' cannot exceed 100." }
+{ "error": { "service": ["\"bad-service\" is not a valid choice."] } }
+{ "error": { "timestamp_after": ["Datetime has wrong format. Use one of these formats instead: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]."] } }
+{ "error": { "limit": ["Ensure this value is less than or equal to 100."] } }
 ```
 
 ---
@@ -75,21 +77,36 @@ Create a new deployment record.
 
 | Field | Rule |
 |---|---|
-| `id` | Non-empty string, max 50 characters, must be unique |
-| `service` | One of the 4 known services |
-| `status` | `success`, `failed`, or `running` |
-| `duration` | Positive integer (seconds) |
+| `id` | Non-empty string, max 50 chars, must be unique |
+| `service` | One of: `billing-api`, `auth-service`, `payment-processor`, `notification-service` |
+| `status` | One of: `success`, `failed`, `running` |
+| `duration` | Positive integer (seconds), min 1 |
+| `timestamp` | ISO 8601, cannot be more than 1 day in the future |
 | `commit_sha` | 7–40 lowercase hex characters |
 
-### Response — 201: Created deployment object
+### Response — 201
 
-### Response — 400: Validation error
+```json
+{
+  "id": "deploy_033",
+  "service": "auth-service",
+  "status": "success",
+  "duration": 90,
+  "timestamp": "2025-06-09T10:00:00Z",
+  "commit_sha": "abc1234",
+  "created_at": "2025-06-09T10:00:00Z",
+  "updated_at": "2025-06-09T10:00:00Z"
+}
+```
+
+### Response — 400
 
 ```json
 { "error": { "commit_sha": ["commit_sha must be 7–40 lowercase hex characters."] } }
+{ "error": { "id": ["deployment with this id already exists."] } }
 ```
 
-### Response — 409: Concurrent duplicate ID (race condition)
+### Response — 409 — Concurrent duplicate (race condition)
 
 ```json
 { "error": "A deployment with this ID already exists." }
@@ -99,9 +116,22 @@ Create a new deployment record.
 
 ## GET /deployments/\<id\>/
 
-Fetch a single deployment by ID. Served from cache after first request (default TTL 300s).
+Fetch a single deployment by ID. Served from in-memory cache after first request (default TTL: 300s, configurable via `DEPLOYMENT_CACHE_TTL`).
 
-### Response — 200: Deployment object
+### Response — 200
+
+```json
+{
+  "id": "deploy_001",
+  "service": "billing-api",
+  "status": "success",
+  "duration": 180,
+  "timestamp": "2025-04-01T08:00:00Z",
+  "commit_sha": "a1b2c3d",
+  "created_at": "2025-04-01T08:00:00Z",
+  "updated_at": "2025-04-01T08:00:00Z"
+}
+```
 
 ### Response — 404
 
@@ -113,11 +143,11 @@ Fetch a single deployment by ID. Served from cache after first request (default 
 
 ## PUT /deployments/\<id\>/
 
-Full update. Uses `SELECT FOR UPDATE` to prevent lost writes under concurrent requests. Invalidates cache on success. All fields required.
+Full update. Uses `SELECT FOR UPDATE` to prevent lost writes under concurrent requests. Invalidates the cache on success. All fields required.
 
-### Response — 200: Updated deployment object
+### Response — 200 — Updated deployment object (same shape as GET)
 
-### Response — 400: Validation error
+### Response — 400
 
 ```json
 { "error": { "status": ["\"badstatus\" is not a valid choice."] } }
