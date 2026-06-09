@@ -1,0 +1,16 @@
+[flake8]
+max-line-length = 100
+exclude =
+    venv,
+    .git,
+    __pycache__,
+    deployments/migrations,
+    deployments/management/commands/seed_data.py
+extend-ignore =
+    # whitespace before ':' — conflicts with slice syntax
+    E203,
+    # line break before binary operator — W504 is the preferred alternative
+    W503
+per-file-ignores =
+    # migrations are auto-generated — skip line length there
+    deployments/migrations/*.py: E501

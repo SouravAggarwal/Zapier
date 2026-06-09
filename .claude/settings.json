@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py test)",
+      "Bash(flake8 deployments/ config/)",
+      "Bash(git diff --name-only HEAD)"
+    ]
+  }
+}
